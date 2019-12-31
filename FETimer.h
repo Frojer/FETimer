@@ -7,6 +7,25 @@
 
 #include <chrono>
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// 타이머 동작 흐름
+//----------------------------------------------------------------------------------------------------------------------------------------
+// otp = _offsetTP, to = timeOffset;
+//  otp           to          otp           otp
+//   |              |          |             |
+//   |--------------___________--------------++++++++++++++++++|
+// start          pause     start        timeScale            stop
+// 
+// ex) Start() -> Pause() -> Start() -> SetTimeScale() -> Stop()
+//
+// Start() 함수가 호출되면서 _offsetTP는 Start() 함수의 호출시점이 됩니다.
+// Pause() 함수가 호출되면서 _offsetTP와 Pause() 함수의 호출시점 사이의 값을 _timeOffset에 더해줍니다.
+// 다시 Start() 함수가 호출 되면서 _offsetTP의 시점이 Start() 함수의 호출시점으로 바뀝니다.
+// SetTimeScale() 함수 호출시 timeScale이 변경된 시점부터 배속의 변화가 필요하므로
+// _offsetTP와 SetTimeScale() 함수의 호출시점 사이의 값을 _timeOffset에 더해주고 _offsetTP의 시점이 SetTimeScale() 함수의 호출시점으로 바뀝니다.
+// Stop() 함수가 호출되면서 _offsetTP부터 Stop() 호출 시점사이의 시간을 _timeOffset에 더해주면서 타이머의 최종 경과시간이 _timeOffset이 됩니다.
+//----------------------------------------------------------------------------------------------------------------------------------------
+
 class FETimer final
 {
 public:
@@ -32,17 +51,12 @@ public:
 	STATE GetState() const;
 
 private:
-	// otp = _offsetTP, to = timeOffset;
-	//  otp           to          otp
-	//   |              |          |
-	//   |--------------___________--------------++++++++++++++++++|
-	// start          pause     start        timeScale            stop
-	// otp가 갱신되면 to에 지금까지의 흐른 시간을 저장합니다. 그 후 새로운 otp부터 now() 사이의 값을 더해 타이머의 값 구합니다.
-	// timeScale에서 offsetTime을 변경해주는 이유는 변경하지 않으면 offsetTime이 가리키는 것부터 지금까지로 timeScale이 적용되기 때문입니다.
 	std::chrono::time_point<std::chrono::high_resolution_clock> _offsetTP;
-	FE::FLOAT _timeScale;
+	FE::FLOAT _timeScale;	// 기본값 : 1.0f
+
+	// _offsetTP가 변경되거나(Pause or Stop or SetTimeScale), GetElapseTime()을 호출하여 _timeOffset을 구하고자 하는경우에만 _timeOffset을 갱신해줍니다.
 	FE::FLOAT _timeOffset;
-	STATE _state;
+	STATE _state;	// 기본값 : STOP
 };
 
 #endif
